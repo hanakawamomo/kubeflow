@@ -1,5 +1,6 @@
 import {KubeConfig} from '@kubernetes/client-node';
 import express, {Request, Response} from 'express';
+import { readFileSync } from "fs";
 import {resolve} from 'path';
 
 import {Api, apiError} from './api';
@@ -8,6 +9,7 @@ import {DefaultApi} from './clients/profile_controller';
 import {WorkgroupApi} from './api_workgroup';
 import {KubernetesService} from './k8s_service';
 import {getMetricsService} from './metrics_service_factory';
+import { replaceNonce } from "./nonce";
 
 const isProduction = process.env.NODE_ENV === 'production';
 const codeEnvironment = isProduction?'production':'development';
@@ -45,7 +47,15 @@ async function main() {
   console.info(`Using Profiles service at ${profilesServiceUrl}`);
   const profilesService = new DefaultApi(profilesServiceUrl);
 
+  const indexHtmlHandler = (req: express.Request, res: express.Response) => {
+    req.headers["x-pp-csp-nonce"] = "cXjVLjeI-iyV78s1qSynjw";
+    let content = readFileSync(resolve(frontEnd, 'index.html')).toString();
+    content = replaceNonce(req, content);
+    res.send(content);
+  };
+
   app.use(express.json());
+  app.get('/', indexHtmlHandler);
   app.use(express.static(frontEnd));
   app.use(attachUser(USERID_HEADER, USERID_PREFIX));
   app.get('/debug', (req: Request, res: Response) => {
@@ -75,9 +85,7 @@ async function main() {
       code: 404,
     })
   );
-  app.get('/*', (_: express.Request, res: express.Response) => {
-    res.sendFile(resolve(frontEnd, 'index.html'));
-  });
+  app.get('/*', indexHtmlHandler);
   app.listen(
       port,
       () => console.info(`Server listening on port http://localhost:${port} (in ${codeEnvironment} mode)`));

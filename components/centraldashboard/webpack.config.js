@@ -190,6 +190,13 @@ module.exports = {
         new ScriptExtHtmlWebpackPlugin({
             defaultAttribute: 'defer',
         }),
+        new ScriptExtHtmlWebpackPlugin({
+            custom: {
+              test: /\.js|css$/,
+              attribute: "nonce",
+              value: "{{ _kfpNonce }}"
+            }
+        }),
     ],
     devServer: {
         port: 8080,
